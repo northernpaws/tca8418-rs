@@ -347,17 +347,17 @@ bitfield! {
         /// Auto-increment for read and write operations.
         ///  0 = disabled
         ///  1 = enabled
-        ai: bool @ 7,
+        pub ai: bool @ 7,
 
         /// GPI event mode configuration
         ///  0 = GPI events are tracked when keypad is locked.
         ///  1 = GPI events are not tracked when keypad is locked.
-        gpi_event_mode_configuration: bool @ 6,
+        pub gpi_event_mode_configuration: bool @ 6,
 
         /// Overflow mode.
         /// 0 = disabled; Overflow data is lost.
         ///  1 = enabled; Overflow data shifts with last event pushing first event out.
-        overflow_mode: bool @ 5,
+        pub overflow_mode: bool @ 5,
 
         /// Interrupt configuration.
         ///   0 = Processor interrupt remains asserted (or low) if
@@ -365,27 +365,27 @@ bitfield! {
         ///        a pending key press, key release or GPI interrupt.
         ///   1 = processor interrupt is deasserted for 50 μs
         ///        and reassert with pending interrupts.
-        interrupt_configuration: bool @ 4,
+        pub interrupt_configuration: bool @ 4,
 
         /// Overflow interrupt enable.
         ///  0 = disabled; INT is not asserted if the FIFO overflows.
         ///  1 = enabled; INT becomes asserted if the FIFO overflows.
-        overflow_interrupt_enable: bool @ 3,
+        pub overflow_interrupt_enable: bool @ 3,
 
         /// Keypad lock interrupt enable.
         ///  0 = disabled; INT is not asserted after a correct unlock key sequence.
         ///  1 = enabled; INT becomes asserted after a correct unlock key sequence.
-        keypad_lock_interrupt_enable: bool @ 2,
+        pub keypad_lock_interrupt_enable: bool @ 2,
 
         /// GPI interrupt enable to host processor.
         ///  0 = disabled; INT is not asserted for a change on a GPI.
         ///. 1 = enabled; INT becomes asserted for a change on a GPI.
-        gpi_interrupt_enable: bool @ 1,
+        pub gpi_interrupt_enable: bool @ 1,
 
         /// Key events interrupt enable to host processor.
         ///  0 = disabled; INT is not asserted when a key event occurs.
         ///  1 = enabled; INT becomes asserted when a key event occurs.
-        key_events_interrupt_enable: bool @ 0
+        pub key_events_interrupt_enable: bool @ 0
     }
 }
 
@@ -412,14 +412,14 @@ bitfield! {
         /// • 1 + 11
         /// • 1 + 21
         /// • 21 + 1 + 11
-        ctrl_alt_delete_interrupt_status: bool @ 4,
+        pub ctrl_alt_delete_interrupt_status: bool @ 4,
 
         /// Overflow interrupt status.
         ///  0 = interrupt not detected.
         ///  1 = interrupt detected.
         ///
         /// Requires writing a 1 to clear interrupts.
-        overflow_interrupt_status: bool @ 3,
+        pub overflow_interrupt_status: bool @ 3,
 
         /// Keypad lock interrupt status.
         ///
@@ -430,21 +430,21 @@ bitfield! {
         ///  1 = interrupt detected
         ///
         /// Requires writing a 1 to clear interrupts.
-        keypad_lock_interrupt_status: bool @ 2,
+        pub keypad_lock_interrupt_status: bool @ 2,
 
         /// GPI interrupt status. Requires writing a 1 to clear interrupts.
         ///  0 = interrupt not detected
         ///  1 = interrupt detected
         ///
         /// Can be used to mask interrupts.
-        gpi_interrupt_status: bool @ 1,
+        pub gpi_interrupt_status: bool @ 1,
 
         /// Key events interrupt status.
         ///  0 = interrupt not detected
         ///  1 = interrupt detected
         ///
         /// Requires writing a 1 to clear interrupts.
-        key_event_interrupt_status: bool @ 0,
+        pub key_event_interrupt_status: bool @ 0,
     }
 }
 
@@ -464,20 +464,20 @@ bitfield! {
         /// Key lock enable.
         ///  0 = disabled; Write a 0 to this bit to unlock the keypad manually.
         ///  1 = enabled; Write a 1 to this bit to lock the keypad.
-        key_lock_enable: bool @ 6, // K_LCK_EN
+        pub key_lock_enable: bool @ 6, // K_LCK_EN
 
         /// Keypad lock status.
         ///  0 = unlock (if LCK1 is 0 too).
         ///  1 = locked (if LCK1 is 1 too).
-        keypad_lock_status_2: bool @ 5, // LCK2
+        pub keypad_lock_status_2: bool @ 5, // LCK2
 
         /// Keypad lock status.
         ///  0 = unlock (if LCK2 is 0 too).
         ///  1 = locked (if LCK2 is 1 too).
-        keypad_lock_status_1: bool @ 4, // LCK1
+        pub keypad_lock_status_1: bool @ 4, // LCK1
 
         /// Key event count.
-        key_event_count: u8 @ 0..=3, // KEC[3:0]
+        pub key_event_count: u8 @ 0..=3, // KEC[3:0]
     }
 }
 impl Register for KeyLockAndEventCounter {
@@ -507,7 +507,7 @@ macro_rules! key_event {
                 ///
                 /// A ‘0’ means a key release happened.
                 /// A ‘1’ means a key has been pressed (which can be cleared on a read).
-                key_pressed: bool @ 7,
+                pub key_pressed: bool @ 7,
 
                 /// KEA[6:0] indicates the key # pressed or released.
                 ///
@@ -515,7 +515,7 @@ macro_rules! key_event {
                 /// pressed or released in a keypad matrix.
                 ///
                 /// Values of 97 to 114 are for GPI events.
-                key_index: u8 @ 0..=6,
+                pub key_index: u8 @ 0..=6,
             }
         }
 
@@ -558,14 +558,14 @@ bitfield! {
         /// will trigger only when the correct unlock sequence is completed.
         ///
         /// The interrupt mask timer should be set for the time it takes for the LCD to dim or turn off.
-        interrupt_mask_timer: u8 @ 3..=7, // KL[7:3]
+        pub interrupt_mask_timer: u8 @ 3..=7, // KL[7:3]
 
         /// Lock1 to Lock2 timer must be non-zero for keylock to be enabled.
         ///
         /// The lock1 to lock2 bits ( KL[2:0] ) define the time
         /// in seconds the user has to press unlock key 2 after
         /// unlock key 1 before the key lock sequence times out.
-        lock1_lock2_timer: u8 @ 0..=2, // KL[2:0]
+        pub lock1_lock2_timer: u8 @ 0..=2, // KL[2:0]
     }
 }
 
@@ -582,10 +582,10 @@ bitfield! {
     #[derive(Clone, Copy, PartialEq, Eq)]
     #[cfg_attr(feature = "defmt", derive(defmt::Format))]
     pub struct Unlock1(pub u8): Debug, FromStorage, IntoStorage, DerefStorage {
-        disabled: bool @ 7,
+        pub disabled: bool @ 7,
 
         /// Index of the key 1 for the unlock sequence.
-        key_index: u8 @ 0..=7,
+        pub key_index: u8 @ 0..=7,
     }
 }
 
@@ -602,10 +602,10 @@ bitfield! {
     #[derive(Clone, Copy, PartialEq, Eq)]
     #[cfg_attr(feature = "defmt", derive(defmt::Format))]
     pub struct Unlock2(pub u8): Debug, FromStorage, IntoStorage, DerefStorage {
-        disabled: bool @ 7,
+        pub disabled: bool @ 7,
 
         /// Index of the key 1 for the unlock sequence.
-        key_index: u8 @ 0..=7,
+        pub key_index: u8 @ 0..=7,
     }
 }
 
@@ -624,14 +624,14 @@ macro_rules! gpio_register {
             #[derive(Clone, Copy, PartialEq, Eq)]
             #[cfg_attr(feature = "defmt", derive(defmt::Format))]
             pub struct $name1(pub u8): Debug, FromStorage, IntoStorage, DerefStorage {
-                row_7: bool [$typename] @ 7,
-                row_6: bool [$typename] @ 6,
-                row_5: bool [$typename] @ 5,
-                row_4: bool [$typename] @ 4,
-                row_3: bool [$typename] @ 3,
-                row_2: bool [$typename] @ 2,
-                row_1: bool [$typename] @ 1,
-                row_0: bool [$typename] @ 0,
+                pub row_7: bool [$typename] @ 7,
+                pub row_6: bool [$typename] @ 6,
+                pub row_5: bool [$typename] @ 5,
+                pub row_4: bool [$typename] @ 4,
+                pub row_3: bool [$typename] @ 3,
+                pub row_2: bool [$typename] @ 2,
+                pub row_1: bool [$typename] @ 1,
+                pub row_0: bool [$typename] @ 0,
             }
         }
 
@@ -649,14 +649,14 @@ macro_rules! gpio_register {
             #[derive(Clone, Copy, PartialEq, Eq)]
             #[cfg_attr(feature = "defmt", derive(defmt::Format))]
             pub struct $name2(pub u8): Debug, FromStorage, IntoStorage, DerefStorage {
-                column_7: bool [$typename] @ 7,
-                column_6: bool [$typename] @ 6,
-                column_5: bool [$typename] @ 5,
-                column_4: bool [$typename] @ 4,
-                column_3: bool [$typename] @ 3,
-                column_2: bool [$typename] @ 2,
-                column_1: bool [$typename] @ 1,
-                column_0: bool [$typename] @ 0,
+                pub column_7: bool [$typename] @ 7,
+                pub column_6: bool [$typename] @ 6,
+                pub column_5: bool [$typename] @ 5,
+                pub column_4: bool [$typename] @ 4,
+                pub column_3: bool [$typename] @ 3,
+                pub column_2: bool [$typename] @ 2,
+                pub column_1: bool [$typename] @ 1,
+                pub column_0: bool [$typename] @ 0,
             }
         }
 
@@ -674,8 +674,8 @@ macro_rules! gpio_register {
             #[derive(Clone, Copy, PartialEq, Eq)]
             #[cfg_attr(feature = "defmt", derive(defmt::Format))]
             pub struct $name3(pub u8): Debug, FromStorage, IntoStorage, DerefStorage {
-                column_9: bool [$typename] @ 1,
-                column_8: bool [$typename] @ 0,
+                pub column_9: bool [$typename] @ 1,
+                pub column_8: bool [$typename] @ 0,
             }
         }
 
