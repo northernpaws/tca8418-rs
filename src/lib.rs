@@ -98,30 +98,112 @@ impl<'a, I2C> Tca8418<'a, I2C> {
     }
 }
 
+/// Implements blocked I2C access using traits from the `embedded-hal-async` crate.
+impl<'a, I2C> Tca8418<'a, I2C>
+where
+    I2C: embedded_hal::i2c::I2c,
+{
+    /// Read the value of a register, manually specifying a register address.
+    pub fn read_register_raw_blocking(&mut self, address: u8) -> Result<u8, I2C::Error> {
+        // Set up to read from the specified register address.
+        let write_buf = &mut self.write_read_buf[..1];
+        write_buf[0] = address;
+
+        // Write the register address to read, and then read
+        // the response byte containing the register's value.
+        let read_buf = &mut self.read_buf[..1];
+        self.device.write_read(ADDRESS, write_buf, read_buf)?;
+
+        Ok(read_buf[0])
+    }
+
+    /// Reads the value of a register.
+    ///
+    /// Takes one of the register implementations as a type parameter
+    /// to statically derive the register address and result type.
+    pub fn read_register_blocking<Register: register::Register>(
+        &mut self,
+    ) -> Result<Register, I2C::Error> {
+        // Set up to read from the statically derived register address.
+        let write_buf = &mut self.write_read_buf[..1];
+        write_buf[0] = Register::ADDRESS;
+
+        // Write the register address to read, and then read
+        // the response byte containing the register's value.
+        let read_buf = &mut self.read_buf[..1];
+        self.device.write_read(ADDRESS, write_buf, read_buf)?;
+
+        // Convert the result byte into the register representation.
+        let result = Register::from(read_buf[0]);
+        Ok(result)
+    }
+
+    /// Writes a new value for a register, manually specifying a register address and value byte.
+    pub fn write_register_raw_blocking(
+        &mut self,
+        address: u8,
+        value: u8,
+    ) -> Result<(), I2C::Error> {
+        let write_buf = &mut self.write_buf[..2];
+        write_buf[0] = address;
+        write_buf[1] = value;
+        self.device.write(ADDRESS, write_buf)
+    }
+
+    /// Writes to a register.
+    pub fn write_register_blocking<Register: register::Register>(
+        &mut self,
+        reg: Register,
+    ) -> Result<(), I2C::Error> {
+        let write_buf = &mut self.write_buf[..2];
+        write_buf[0] = Register::ADDRESS;
+        write_buf[1] = reg.into();
+        self.device.write(ADDRESS, write_buf)
+    }
+}
+
 /// Implements asyncronous I2C access using traits from the `embedded-hal-async` crate.
 impl<'a, I2C> Tca8418<'a, I2C>
 where
     I2C: embedded_hal_async::i2c::I2c,
 {
-    /// Reads the value of a register.
-    pub async fn read_register<Register: register::Register>(
-        &mut self,
-    ) -> Result<Register, I2C::Error> {
+    /// Read the value of a register, manually specifying a register address.
+    pub async fn read_register_raw(&mut self, address: u8) -> Result<u8, I2C::Error> {
+        // Set up to read from the specified register address.
         let write_buf = &mut self.write_read_buf[..1];
+        write_buf[0] = address;
 
-        // Writes the register address to read, and
-        // then reads the responding register values.
-        write_buf[0] = Register::ADDRESS;
-
+        // Write the register address to read, and then read
+        // the response byte containing the register's value.
         let read_buf = &mut self.read_buf[..1];
         self.device.write_read(ADDRESS, write_buf, read_buf).await?;
 
+        Ok(read_buf[0])
+    }
+
+    /// Reads the value of a register.
+    ///
+    /// Takes one of the register implementations as a type parameter
+    /// to statically derive the register address and result type.
+    pub async fn read_register<Register: register::Register>(
+        &mut self,
+    ) -> Result<Register, I2C::Error> {
+        // Set up to read from the statically derived register address.
+        let write_buf = &mut self.write_read_buf[..1];
+        write_buf[0] = Register::ADDRESS;
+
+        // Write the register address to read, and then read
+        // the response byte containing the register's value.
+        let read_buf = &mut self.read_buf[..1];
+        self.device.write_read(ADDRESS, write_buf, read_buf).await?;
+
+        // Convert the result byte into the register representation.
         let result = Register::from(read_buf[0]);
         Ok(result)
     }
 
-    /// Writes a new value for a register.
-    pub async fn write_register_byte(&mut self, address: u8, value: u8) -> Result<(), I2C::Error> {
+    /// Writes a new value for a register, manually specifying a register address and value byte.
+    pub async fn write_register_raw(&mut self, address: u8, value: u8) -> Result<(), I2C::Error> {
         let write_buf = &mut self.write_buf[..2];
         write_buf[0] = address;
         write_buf[1] = value;

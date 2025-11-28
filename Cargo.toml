@@ -6,9 +6,10 @@ edition = "2024"
 [dependencies]
 concat-idents = "1.1.5"
 defmt = { version = "1.0.1", optional = true }
+embedded-hal = "1.0.0"
 embedded-hal-async = "1.0.0"
 proc-bitfield = "0.5.2"
 
 [features]
 std = []
-defmt = ["dep:defmt"]
+defmt = ["dep:defmt", "embedded-hal/defmt-03", "embedded-hal-async/defmt-03"]
