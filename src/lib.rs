@@ -99,6 +99,18 @@ impl<'a, I2C> Tca8418<'a, I2C> {
             read_buf,
         }
     }
+
+    fn init_config(&self) -> register::Configuration {
+        register::Configuration(0)
+            .with_ai(false) // disable auto increment for write operations
+            .with_gpi_event_mode_configuration(false) // GPI events tracked when keypad locked
+            .with_overflow_mode(true) // overflow data shifts with last event pushing first event out
+            .with_interrupt_configuration(true) //  processor interrupt is deasserted for 50 μs and reassert with pending interrupts
+            .with_overflow_interrupt_enable(true) // assert INT on overflow
+            .with_keypad_lock_interrupt_enable(false) // don't assert interrupt after keypad unlock
+            .with_gpi_interrupt_enable(false) // assert INT for GPI events // TODO: change
+            .with_key_events_interrupt_enable(true) // assert INT for keypad events
+    }
 }
 
 /// Implements blocked I2C access using traits from the `embedded-hal-async` crate.
@@ -164,6 +176,11 @@ where
         self.device.write(ADDRESS, write_buf)
     }
 
+    /// Initializes the TAC8418 with common defaults for the configuration register.
+    pub fn init_blocking(&mut self) -> Result<(), I2C::Error> {
+        self.write_register_blocking(self.init_config())
+    }
+
     /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
     ///
     /// The TCA8418's internal FIFO contains a queue of up to 10 key press and release events,
@@ -182,6 +199,62 @@ where
         }
 
         Ok(Some(key_event))
+    }
+
+    /// Read the status of a GPIO pin from the corrosponding register for the pin.
+    pub fn read_gpio_status_blocking(&mut self, pin: Pin) -> Result<bool, I2C::Error> {
+        match pin {
+            Pin::Row7
+            | Pin::Row6
+            | Pin::Row5
+            | Pin::Row4
+            | Pin::Row3
+            | Pin::Row2
+            | Pin::Row1
+            | Pin::Row0 => {
+                let register = self.read_register_blocking::<register::GPIODataStatus1>()?;
+                match pin {
+                    Pin::Row7 => Ok(register.row_7()),
+                    Pin::Row6 => Ok(register.row_6()),
+                    Pin::Row5 => Ok(register.row_5()),
+                    Pin::Row4 => Ok(register.row_4()),
+                    Pin::Row3 => Ok(register.row_3()),
+                    Pin::Row2 => Ok(register.row_2()),
+                    Pin::Row1 => Ok(register.row_1()),
+                    Pin::Row0 => Ok(register.row_0()),
+                    _ => panic!(),
+                }
+            }
+            Pin::Column7
+            | Pin::Column6
+            | Pin::Column5
+            | Pin::Column4
+            | Pin::Column3
+            | Pin::Column2
+            | Pin::Column1
+            | Pin::Column0 => {
+                let register = self.read_register_blocking::<register::GPIODataStatus2>()?;
+                match pin {
+                    Pin::Column7 => Ok(register.column_7()),
+                    Pin::Column6 => Ok(register.column_6()),
+                    Pin::Column5 => Ok(register.column_5()),
+                    Pin::Column4 => Ok(register.column_4()),
+                    Pin::Column3 => Ok(register.column_3()),
+                    Pin::Column2 => Ok(register.column_2()),
+                    Pin::Column1 => Ok(register.column_1()),
+                    Pin::Column0 => Ok(register.column_0()),
+                    _ => panic!(),
+                }
+            }
+            Pin::Column9 | Pin::Column8 => {
+                let register = self.read_register_blocking::<register::GPIODataStatus3>()?;
+                match pin {
+                    Pin::Column9 => Ok(register.column_9()),
+                    Pin::Column8 => Ok(register.column_8()),
+                    _ => panic!(),
+                }
+            }
+        }
     }
 }
 
@@ -244,6 +317,11 @@ where
         self.device.write(ADDRESS, write_buf).await
     }
 
+    /// Initializes the TAC8418 with common defaults for the configuration register.
+    pub async fn init(&mut self) -> Result<(), I2C::Error> {
+        self.write_register(self.init_config()).await
+    }
+
     /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
     ///
     /// The TCA8418's internal FIFO contains a queue of up to 10 key press and release events,
@@ -262,5 +340,61 @@ where
         }
 
         Ok(Some(key_event))
+    }
+
+    /// Read the status of a GPIO pin from the corrosponding register for the pin.
+    pub async fn read_gpio_status(&mut self, pin: Pin) -> Result<bool, I2C::Error> {
+        match pin {
+            Pin::Row7
+            | Pin::Row6
+            | Pin::Row5
+            | Pin::Row4
+            | Pin::Row3
+            | Pin::Row2
+            | Pin::Row1
+            | Pin::Row0 => {
+                let register = self.read_register::<register::GPIODataStatus1>().await?;
+                match pin {
+                    Pin::Row7 => Ok(register.row_7()),
+                    Pin::Row6 => Ok(register.row_6()),
+                    Pin::Row5 => Ok(register.row_5()),
+                    Pin::Row4 => Ok(register.row_4()),
+                    Pin::Row3 => Ok(register.row_3()),
+                    Pin::Row2 => Ok(register.row_2()),
+                    Pin::Row1 => Ok(register.row_1()),
+                    Pin::Row0 => Ok(register.row_0()),
+                    _ => panic!(),
+                }
+            }
+            Pin::Column7
+            | Pin::Column6
+            | Pin::Column5
+            | Pin::Column4
+            | Pin::Column3
+            | Pin::Column2
+            | Pin::Column1
+            | Pin::Column0 => {
+                let register = self.read_register::<register::GPIODataStatus2>().await?;
+                match pin {
+                    Pin::Column7 => Ok(register.column_7()),
+                    Pin::Column6 => Ok(register.column_6()),
+                    Pin::Column5 => Ok(register.column_5()),
+                    Pin::Column4 => Ok(register.column_4()),
+                    Pin::Column3 => Ok(register.column_3()),
+                    Pin::Column2 => Ok(register.column_2()),
+                    Pin::Column1 => Ok(register.column_1()),
+                    Pin::Column0 => Ok(register.column_0()),
+                    _ => panic!(),
+                }
+            }
+            Pin::Column9 | Pin::Column8 => {
+                let register = self.read_register::<register::GPIODataStatus3>().await?;
+                match pin {
+                    Pin::Column9 => Ok(register.column_9()),
+                    Pin::Column8 => Ok(register.column_8()),
+                    _ => panic!(),
+                }
+            }
+        }
     }
 }
