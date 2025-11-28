@@ -8,6 +8,9 @@
 pub mod register;
 
 use embedded_hal_async::i2c::SevenBitAddress;
+use proc_bitfield::Bitfield;
+
+use crate::register::KeyEventA;
 
 /// The I2C device address used by all TCA8418 devices.
 pub const ADDRESS: SevenBitAddress = 0b0110100;
@@ -160,6 +163,26 @@ where
         write_buf[1] = reg.into();
         self.device.write(ADDRESS, write_buf)
     }
+
+    /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
+    ///
+    /// The TCA8418's internal FIFO contains a queue of up to 10 key press and release events,
+    /// either from the key matrix or from the one or more of the pins configured as GPIO inputs.
+    pub fn poll_fifo_blocking(&mut self) -> Result<Option<KeyEventA>, I2C::Error> {
+        // The KEY_EVENT_A (0x04) is the head of the FIFO stack.
+        //
+        // Each read of KEY_EVENT_A will deincrement the key event count
+        // by one, and move all the data in the stack down by one.
+        let key_event: register::KeyEventA = self.read_register_blocking()?;
+
+        // A 0 in the key event A register indicates that
+        // there are no more key events in the FIFO.
+        if key_event.0 == 0_u8 {
+            return Ok(None);
+        }
+
+        Ok(Some(key_event))
+    }
 }
 
 /// Implements asyncronous I2C access using traits from the `embedded-hal-async` crate.
@@ -219,5 +242,25 @@ where
         write_buf[0] = Register::ADDRESS;
         write_buf[1] = reg.into();
         self.device.write(ADDRESS, write_buf).await
+    }
+
+    /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
+    ///
+    /// The TCA8418's internal FIFO contains a queue of up to 10 key press and release events,
+    /// either from the key matrix or from the one or more of the pins configured as GPIO inputs.
+    pub async fn poll_fifo(&mut self) -> Result<Option<KeyEventA>, I2C::Error> {
+        // The KEY_EVENT_A (0x04) is the head of the FIFO stack.
+        //
+        // Each read of KEY_EVENT_A will deincrement the key event count
+        // by one, and move all the data in the stack down by one.
+        let key_event: register::KeyEventA = self.read_register().await?;
+
+        // A 0 in the key event A register indicates that
+        // there are no more key events in the FIFO.
+        if key_event.0 == 0_u8 {
+            return Ok(None);
+        }
+
+        Ok(Some(key_event))
     }
 }
