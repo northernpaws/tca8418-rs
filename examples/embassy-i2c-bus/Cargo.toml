@@ -1,0 +1,6 @@
+[package]
+name = "embassy-i2c-bus"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
