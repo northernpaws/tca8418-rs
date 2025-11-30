@@ -7,7 +7,10 @@
 /// methods on the driver to ensure type and register address safety.
 pub mod register;
 
-use embedded_hal::digital::OutputPin;
+use embedded_hal::{
+    digital::{self, OutputPin},
+    i2c,
+};
 use embedded_hal_async::i2c::SevenBitAddress;
 
 use crate::register::KeyEventA;
@@ -59,16 +62,9 @@ pub enum Pin {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum InitError<I2C: embedded_hal_async::i2c::I2c, Reset: OutputPin> {
-    ResetError(Reset::Error),
-    I2CError(I2C::Error),
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum InitBlockingError<I2C: embedded_hal::i2c::I2c, Reset: OutputPin> {
-    ResetError(Reset::Error),
-    I2CError(I2C::Error),
+pub enum InitError<I2CError: i2c::Error, ResetError: digital::Error> {
+    ResetError(ResetError),
+    I2CError(I2CError),
 }
 
 pub struct Tca8418<'a, I2C, RESET: OutputPin, DELAY> {
@@ -226,12 +222,12 @@ where
     }
 
     /// Initializes the TAC8418 with common defaults for the configuration register.
-    pub fn init_blocking(&mut self) -> Result<(), InitBlockingError<I2C, Reset>> {
+    pub fn init_blocking(&mut self) -> Result<(), InitError<I2C::Error, Reset::Error>> {
         self.reset_blocking()
-            .map_err(|e| InitBlockingError::ResetError(e))?;
+            .map_err(|e| InitError::ResetError(e))?;
 
         self.write_register_blocking(self.init_config())
-            .map_err(|e| InitBlockingError::I2CError(e))
+            .map_err(|e| InitError::I2CError(e))
     }
 
     /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
@@ -308,6 +304,20 @@ where
                 }
             }
         }
+    }
+
+    /// Clears all interrupt flags.
+    ///
+    /// Processes a little faster then manually writing
+    /// with register::InterruptStatus since it skips
+    /// processing the register struct.
+    ///
+    /// If INT_CFG(CFG[4])=1 and there are still pending keypressed
+    /// in the FIFO, then clearing the interrupt will deassert INT
+    /// for 50 μs and update the interrupt table and re-assert.
+    pub fn clear_all_interrupts_blocking(&mut self) -> Result<(), I2C::Error> {
+        self.write_register_raw_blocking(register::INT_STAT_ADDRESS, 0xff)?;
+        Ok(())
     }
 }
 
@@ -395,7 +405,7 @@ where
     }
 
     /// Initializes the TAC8418 with common defaults for the configuration register.
-    pub async fn init(&mut self) -> Result<(), InitError<I2C, Reset>> {
+    pub async fn init(&mut self) -> Result<(), InitError<I2C::Error, Reset::Error>> {
         self.reset().await.map_err(|e| InitError::ResetError(e))?;
 
         self.write_register(self.init_config())
@@ -477,5 +487,20 @@ where
                 }
             }
         }
+    }
+
+    /// Clears all interrupt flags.
+    ///
+    /// Processes a little faster then manually writing
+    /// with register::InterruptStatus since it skips
+    /// processing the register struct.
+    ///
+    /// If INT_CFG(CFG[4])=1 and there are still pending keypressed
+    /// in the FIFO, then clearing the interrupt will deassert INT
+    /// for 50 μs and update the interrupt table and re-assert.
+    pub async fn clear_all_interrupts(&mut self) -> Result<(), I2C::Error> {
+        self.write_register_raw(register::INT_STAT_ADDRESS, 0xff)
+            .await?;
+        Ok(())
     }
 }
