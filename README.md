@@ -56,4 +56,4 @@ I ran into a problem with one project where the MCU would restart, but then, bec
 
 ## TODO
 
- - [] Collapse the read and write buffers down into a single buffer, passing 3 sequential buffers as seperate variables is redundent. 
+ - [ ] Collapse the read and write buffers down into a single buffer, passing 3 sequential buffers as seperate variables is redundent. 
