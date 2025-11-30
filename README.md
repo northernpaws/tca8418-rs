@@ -6,6 +6,44 @@ This crate consumes either `embedded-hal` or `embedded-hal-async`'s `I2c` traits
 
 See `examples/` for usage examples with Embassy.
 
+## Usage
+
+```rust
+use tca8418_rs::{
+    Tca8418,
+    register::{KEYPAD_GPIO1_ADDRESS, KEYPAD_GPIO2_ADDRESS},
+};
+
+let write_buf = [0u8; 2];
+let write_read_buf = [0u8; 1]
+let read_buf = [0u8; 1];
+
+// Create an device handle referencing the I2C bus, and use it to initialize the TCA8418 driver.
+let mut driver = Tca8418::new(
+    i2c, // i2c device/bus
+    &mut write_buf,
+    &mut write_read_buf,
+    &mut read_buf,
+    Some(reset_pin),
+    Delay,
+);
+
+// Resets and configures default settings.
+driver.init().await?;
+
+// Enable rows 0-3 in the button matrix.
+driver
+    .write_register_raw(KEYPAD_GPIO1_ADDRESS, 0b00001111)
+    .await
+    .unwrap();
+
+// Enable columns 0-3 in the button matrix.
+driver
+    .write_register_raw(KEYPAD_GPIO2_ADDRESS, 0b00001111)
+    .await
+    .unwrap();
+```
+
 ## Features
 
 - `defmt` - Enables debug and error logging over [`defmt`](https://docs.rs/defmt/latest/defmt/).
