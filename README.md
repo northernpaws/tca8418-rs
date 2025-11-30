@@ -15,8 +15,3 @@ See `examples/` for usage examples with Embassy.
 I highly recommend connecting the reset line - if the TCA8418 isn't reset in tandem with the MCU, or the MCU tries to reconfigure the TCA8418 without a reset first, then there could be key events in the TCA8418 FIFO from before the MCU expects.
 
 I ran into a problem with one project where the MCU would restart, but then, because the power to the TCA8418 wasn't also cycled, there would be a backlog of keys pressed before or during the restart that the MCU would suddenly try to process, leading to what looked like ghost inputs.
-
-## TODO
-
-- [x] Add an implementation using the `embedded-hal` I2C blocking traits.
-

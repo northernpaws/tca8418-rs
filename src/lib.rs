@@ -7,8 +7,8 @@
 /// methods on the driver to ensure type and register address safety.
 pub mod register;
 
+use embedded_hal::digital::OutputPin;
 use embedded_hal_async::i2c::SevenBitAddress;
-use proc_bitfield::Bitfield;
 
 use crate::register::KeyEventA;
 
@@ -57,7 +57,21 @@ pub enum Pin {
     Column9,
 }
 
-pub struct Tca8418<'a, I2C> {
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum InitError<I2C: embedded_hal_async::i2c::I2c, Reset: OutputPin> {
+    ResetError(Reset::Error),
+    I2CError(I2C::Error),
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum InitBlockingError<I2C: embedded_hal::i2c::I2c, Reset: OutputPin> {
+    ResetError(Reset::Error),
+    I2CError(I2C::Error),
+}
+
+pub struct Tca8418<'a, I2C, RESET: OutputPin, DELAY> {
     /// Handle to the embedded-hal or embedded-hal-async I2C communication interface.
     device: I2C,
 
@@ -75,9 +89,13 @@ pub struct Tca8418<'a, I2C> {
     ///
     /// [register_address]
     read_buf: &'a mut [u8], // [u8; 1]
+
+    /// Optional bound reset pin.
+    reset_pin: Option<RESET>,
+    delay: DELAY,
 }
 
-impl<'a, I2C> Tca8418<'a, I2C> {
+impl<'a, I2C, RESET: OutputPin, DELAY> Tca8418<'a, I2C, RESET, DELAY> {
     /// Constructs a new instance of the TCA8418 driver.
     ///
     /// The constructor takes 3 buffers used for reading
@@ -87,9 +105,13 @@ impl<'a, I2C> Tca8418<'a, I2C> {
     /// in a specific memory region.
     pub fn new(
         device: I2C,
+
         write_buf: &'a mut [u8],      // [u8; 2]
         write_read_buf: &'a mut [u8], // [u8; 1]
         read_buf: &'a mut [u8],       // [u8; 1],
+
+        reset_pin: Option<RESET>,
+        delay: DELAY,
     ) -> Self {
         Self {
             device,
@@ -97,6 +119,9 @@ impl<'a, I2C> Tca8418<'a, I2C> {
             write_buf,
             write_read_buf,
             read_buf,
+
+            reset_pin,
+            delay,
         }
     }
 
@@ -114,9 +139,10 @@ impl<'a, I2C> Tca8418<'a, I2C> {
 }
 
 /// Implements blocked I2C access using traits from the `embedded-hal-async` crate.
-impl<'a, I2C> Tca8418<'a, I2C>
+impl<'a, I2C, Reset: OutputPin, DELAY> Tca8418<'a, I2C, Reset, DELAY>
 where
     I2C: embedded_hal::i2c::I2c,
+    DELAY: embedded_hal::delay::DelayNs,
 {
     /// Read the value of a register, manually specifying a register address.
     pub fn read_register_raw_blocking(&mut self, address: u8) -> Result<u8, I2C::Error> {
@@ -176,9 +202,36 @@ where
         self.device.write(ADDRESS, write_buf)
     }
 
+    /// Resets the TCA8418 via it's reset pin if one was supplied.
+    pub fn reset_blocking(&mut self) -> Result<(), Reset::Error> {
+        let Some(reset_pin) = &mut self.reset_pin else {
+            return Ok(());
+        };
+
+        reset_pin.set_low()?;
+
+        // Datasheet requires at least a 120us reset pulse.
+        //
+        // We set it slightly larger for a margin.
+        self.delay.delay_us(140);
+
+        reset_pin.set_high()?;
+
+        // Datasheet specifies at least a 120us reset duration.
+        //
+        // Again, we set it slightly larger for a margin.
+        self.delay.delay_us(140);
+
+        Ok(())
+    }
+
     /// Initializes the TAC8418 with common defaults for the configuration register.
-    pub fn init_blocking(&mut self) -> Result<(), I2C::Error> {
+    pub fn init_blocking(&mut self) -> Result<(), InitBlockingError<I2C, Reset>> {
+        self.reset_blocking()
+            .map_err(|e| InitBlockingError::ResetError(e))?;
+
         self.write_register_blocking(self.init_config())
+            .map_err(|e| InitBlockingError::I2CError(e))
     }
 
     /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
@@ -259,9 +312,10 @@ where
 }
 
 /// Implements asyncronous I2C access using traits from the `embedded-hal-async` crate.
-impl<'a, I2C> Tca8418<'a, I2C>
+impl<'a, I2C, Reset: OutputPin, DELAY> Tca8418<'a, I2C, Reset, DELAY>
 where
     I2C: embedded_hal_async::i2c::I2c,
+    DELAY: embedded_hal_async::delay::DelayNs,
 {
     /// Read the value of a register, manually specifying a register address.
     pub async fn read_register_raw(&mut self, address: u8) -> Result<u8, I2C::Error> {
@@ -317,9 +371,36 @@ where
         self.device.write(ADDRESS, write_buf).await
     }
 
+    /// Resets the TCA8418 via it's reset pin if one was supplied.
+    pub async fn reset(&mut self) -> Result<(), Reset::Error> {
+        let Some(reset_pin) = &mut self.reset_pin else {
+            return Ok(());
+        };
+
+        reset_pin.set_low()?;
+
+        // Datasheet requires at least a 120us reset pulse.
+        //
+        // We set it slightly larger for a margin.
+        self.delay.delay_us(140).await;
+
+        reset_pin.set_high()?;
+
+        // Datasheet specifies at least a 120us reset duration.
+        //
+        // Again, we set it slightly larger for a margin.
+        self.delay.delay_us(140).await;
+
+        Ok(())
+    }
+
     /// Initializes the TAC8418 with common defaults for the configuration register.
-    pub async fn init(&mut self) -> Result<(), I2C::Error> {
-        self.write_register(self.init_config()).await
+    pub async fn init(&mut self) -> Result<(), InitError<I2C, Reset>> {
+        self.reset().await.map_err(|e| InitError::ResetError(e))?;
+
+        self.write_register(self.init_config())
+            .await
+            .map_err(|e| InitError::I2CError(e))
     }
 
     /// Reads the head of the FIFO and returns the key event, or `None` if the FIFO was empty.
