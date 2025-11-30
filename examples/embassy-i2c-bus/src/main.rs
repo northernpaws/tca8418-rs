@@ -26,6 +26,7 @@ use embassy_stm32::{
 use embassy_embedded_hal::shared_bus::asynch;
 
 use panic_probe as _;
+
 use tca8418_rs::{
     Tca8418,
     register::{KEYPAD_GPIO1_ADDRESS, KEYPAD_GPIO2_ADDRESS},
