@@ -179,6 +179,8 @@ async fn main(_spawner: Spawner) {
 
         info!("TCA8418 FIFO cleared!");
 
+        // After processing the raised interrupt we need to clear
+        // the flag so it doesn't immediately  re-trigger.
         driver.clear_all_interrupts().await.unwrap();
     }
 }

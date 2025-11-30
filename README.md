@@ -42,6 +42,47 @@ driver
     .write_register_raw(KEYPAD_GPIO2_ADDRESS, 0b00001111)
     .await
     .unwrap();
+
+// Start a loop listening for interrupt events from the TCA8418 and logging them.
+loop {
+    // If the interrupt pin is high at the start of the loop
+    // then we need to immediately try to process the FIFO.
+    //
+    // The interrupt pin implementation depends on your HAL,
+    // this example is with an ExtiInput from Embassy.
+    if !int.is_low() {
+        // Wait for the TCA8418 to raise an interrupt.
+        int.wait_for_falling_edge().await;
+    } else {
+        info!("Interrupt line was already low, uncleared FIFO from previous loop?")
+    }
+
+    // Process the FIFO buffer in a loop until there are no events left.
+    loop {
+        // Poll the FIFO for the key event currently at it's head.
+        let Ok(result) = driver.poll_fifo().await else {
+            error!("I2C communication error polling TCA8418 for events!");
+            break;
+        };
+
+        // If there was no event then the FIFO is empty.
+        let Some(event) = result else {
+            break;
+        };
+
+        // Otherwise, we can process the received event.
+        let keycode = event.key_index();
+        if event.key_pressed() {
+            info!("Key {} pressed!", keycode);
+        } else {
+            info!("Key {} released!", keycode);
+        }
+    }
+
+    info!("TCA8418 FIFO cleared!");
+
+    driver.clear_all_interrupts().await.unwrap();
+}
 ```
 
 ## Features
